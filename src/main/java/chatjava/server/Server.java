@@ -1,6 +1,6 @@
-package java.chatjava.server;
+package chatjava.server;
 
-import java.chatjava.common.Message;
+import chatjava.common.Message;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -10,11 +10,11 @@ import java.net.Socket;
 import java.util.*;
 
 public class Server {
-    protected static final Logger LOGGER = LogManager.getLogger(Server.class);
+    protected static final Logger LOGGER = LogManager.getLogger("Server");
 
     private final int port;
-    private final List<java.chatjava.server.ClientHandlerRunnable> clients = new ArrayList<>();
-    private final HashMap<String, List<java.chatjava.server.ClientHandlerRunnable>> rooms = new HashMap<>();
+    private final List<ClientHandlerRunnable> clients = new ArrayList<>();
+    private final HashMap<String, List<ClientHandlerRunnable>> rooms = new HashMap<>();
     private ServerSocket serverSocket;
     private Thread connectionThread;
     private boolean isStarted;
@@ -31,19 +31,20 @@ public class Server {
             try {
                 serverSocket = new ServerSocket(port);
                 serverSocket.setReuseAddress(true);
-                System.out.println("Server listening on port 3333");
+                LOGGER.info("Server listening on port 3333");
                 LOGGER.info("Started server");
+                System.out.println("Server started: type help");
 
                 while (true) {
                     Socket clientSocket = serverSocket.accept();
                     synchronized (clients) {
-                        java.chatjava.server.ClientHandlerRunnable clientHandler = new java.chatjava.server.ClientHandlerRunnable(clientSocket, clients, rooms);
+                        ClientHandlerRunnable clientHandler = new ClientHandlerRunnable(clientSocket, clients, rooms);
                         clients.add(clientHandler);
                         rooms.get("staging").add(clientHandler);
                         new Thread(clientHandler).start();
                         clientHandler.writer.writeObject(new Message.JoinRoom.Response("staging"));
                         clientHandler.currentlyJoinedRoom = "staging";
-                        System.out.println("New connection: " + clientSocket.getInetAddress());
+                        LOGGER.info("New connection: {}", clientSocket.getInetAddress());
                     }
                 }
             } catch (IOException e) {
@@ -58,15 +59,15 @@ public class Server {
         try {
             serverSocket.close();
         } catch (IOException e) {
-            System.err.println("Failed to close java.chatjava.server socket");
+            LOGGER.error("Failed to close server socket");
         }
         // shutdown code
         synchronized (clients) {
-            for (java.chatjava.server.ClientHandlerRunnable handler : clients) {
+            for (ClientHandlerRunnable handler : clients) {
                 try {
                     handler.writer.writeObject(new Message.Shutdown());
                 } catch (IOException e) {
-                    System.err.println("Failed to write to java.chatjava.client");
+                    LOGGER.error("Failed to send disconnect message to client socket");
                 }
                 handler.shutdown();
             }
@@ -91,15 +92,15 @@ public class Server {
                 }
                 else if (command.equalsIgnoreCase("list_clients")) {
                     System.out.println(clients.size() + " connected.");
-                    for (java.chatjava.server.ClientHandlerRunnable handler : clients) {
+                    for (ClientHandlerRunnable handler : clients) {
                         System.out.println("Client: " + handler.socket.getInetAddress());
                     }
                 }
                 else if (command.equalsIgnoreCase("list_rooms")) {
                     System.out.println(rooms.size() + " rooms");
-                    for (Map.Entry<String, List<java.chatjava.server.ClientHandlerRunnable>> room : rooms.entrySet()) {
+                    for (Map.Entry<String, List<ClientHandlerRunnable>> room : rooms.entrySet()) {
                         System.out.println("Room: " + room.getKey());
-                        for (java.chatjava.server.ClientHandlerRunnable clientHandler : room.getValue()) {
+                        for (ClientHandlerRunnable clientHandler : room.getValue()) {
                             System.out.println("\t" + clientHandler.socket.getInetAddress());
                         }
                     }
@@ -112,9 +113,9 @@ public class Server {
 
         try {
             connectionThread.join();
-            System.out.println("Joined thread");
+            LOGGER.info("Joined connection thread");
         } catch (InterruptedException e) {
-            System.err.println("Failed to join thread");
+            LOGGER.error("Failed to join connection thread");
         }
     }
 

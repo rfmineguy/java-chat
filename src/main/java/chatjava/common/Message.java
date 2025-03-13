@@ -1,4 +1,4 @@
-package java.chatjava.common;
+package chatjava.common;
 
 import java.io.Serializable;
 
@@ -59,14 +59,24 @@ public class Message implements Serializable {
             }
         }
     }
-    public static class Text extends Message {
-        String text;
-        public Text(String text) {
-            this.text = text;
+    public static class SendTextMessage extends Message {
+        public static class Request extends Message {
+            String user;
+            String text;
+            public Request(String user, String text) {
+                this.user = user;
+                this.text = text;
+            }
+
+            public String getText() {
+                return text;
+            }
         }
 
-        public String getText() {
-            return text;
+        public static class Response extends Request {
+            public Response(String user, String text) {
+                super(user, text);
+            }
         }
     }
 }

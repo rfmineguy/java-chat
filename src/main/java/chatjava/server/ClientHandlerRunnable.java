@@ -1,6 +1,6 @@
-package java.chatjava.server;
+package chatjava.server;
 
-import java.chatjava.common.Message;
+import chatjava.common.Message;
 
 import java.io.*;
 import java.net.Socket;
@@ -41,7 +41,7 @@ public class ClientHandlerRunnable implements Runnable {
             try {
                 Message message;
                 while ((message = (Message) reader.readObject()) != null) {
-                    // System.out.println("Received: " + message);
+                    Server.LOGGER.info("Received message : {}", message);
                     if (message instanceof Message.JoinRoom.Request joinRoom) {
                         // ensure the room exists
                         if (!roomsListRef.containsKey(joinRoom.get_to_room())) roomsListRef.put(joinRoom.get_to_room(), new ArrayList<>());
@@ -53,7 +53,7 @@ public class ClientHandlerRunnable implements Runnable {
                     }
                     if (message instanceof Message.ExitRoom.Request exitRoom) {
                         if (!roomsListRef.containsKey(currentlyJoinedRoom)) {
-                            System.err.printf("[%s] Cannot exit room '%s'%n", this.socket.getInetAddress(), currentlyJoinedRoom);
+                            Server.LOGGER.error("{} Cannot exit room '{}'", this.socket.getInetAddress(), currentlyJoinedRoom);
                             continue;
                         }
                         roomsListRef.get(currentlyJoinedRoom).remove(this);
@@ -61,16 +61,22 @@ public class ClientHandlerRunnable implements Runnable {
 
                         writer.writeObject(new Message.ExitRoom.Response(currentlyJoinedRoom, "staging"));
                     }
-                    if (message instanceof Message.Text text) {
-                        System.out.println(socket.getInetAddress() + " SENT " + text.getText());
+                    if (message instanceof Message.SendTextMessage.Request text) {
+                        Server.LOGGER.info("{} Sent message: '{}'", socket.getInetAddress(), text.getText());
+
+                        writer.writeObject(new Message.SendTextMessage.Response(socket.getInetAddress().toString(), text.getText()));
+                        for (ClientHandlerRunnable client : roomsListRef.get(currentlyJoinedRoom)) {
+                            if (client == this) continue;
+                            client.writer.writeObject(new Message.SendTextMessage.Response(socket.getInetAddress().toString(), text.getText()));
+                        }
                     }
                     if (message instanceof Message.Disconnect.Request disconnect) {
                         if (!roomsListRef.containsKey(currentlyJoinedRoom)) {
-                            System.err.println("Cannot disconnect '" + currentlyJoinedRoom + "' does not exist");
+                            Server.LOGGER.error("Cannot disconnect '{}' does not exist", currentlyJoinedRoom);
                             continue;
                         }
                         if (!roomsListRef.get(currentlyJoinedRoom).contains(this)) {
-                            System.err.println("Cannot disconnect '" + this.socket.getInetAddress() + ". Not connected.");
+                            Server.LOGGER.error("Cannot disconnect '{}'. Not connected.", this.socket.getInetAddress());
                             continue;
                         }
                         this.running = false;
@@ -95,8 +101,8 @@ public class ClientHandlerRunnable implements Runnable {
         try {
             socket.close();
         } catch (IOException e) {
-            System.err.println("Failed to close java.chatjava.client socket");
+            Server.LOGGER.error("Failed to close client socket");
         }
-        System.out.println("Shutdown java.chatjava.client handler");
+        Server.LOGGER.info("Shutdown client handler: {}", this.socket.getInetAddress());
     }
 }

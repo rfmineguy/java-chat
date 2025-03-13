@@ -1,0 +1,76 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '9.0.0-beta10'
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repository.apache.org/snapshots' }
+}
+
+dependencies {
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.23.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.23.1'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', 'src/main/resources']
+        }
+    }
+}
+
+tasks.register('runclient', JavaExec) {
+    group = 'application'
+    description = 'run client'
+    mainClass = 'chatjava.client.ClientMain'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+tasks.register('runserver', JavaExec) {
+    group = 'application'
+    description = 'run server'
+    mainClass = 'chatjava.server.ServerMain'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+tasks.register("build-chat-client", ShadowJar) {
+    group = 'application'
+    description = 'build the chat client jar'
+    archiveBaseName = 'chat-java.client'
+    archiveVersion = '1.0.0'
+
+    manifest {
+        attributes(
+            'Main-Class': 'chatjava.client.ClientMain'
+        )
+    }
+
+    from(sourceSets.main.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) })
+    from sourceSets.main.runtimeClasspath
+}
+tasks.register("build-chat-server", ShadowJar) {
+    group = 'application'
+    description = 'build the chat-server jar'
+    archiveBaseName = 'chat-java.server'
+    archiveVersion = '1.0.0'
+
+    manifest {
+        attributes(
+            'Main-Class': 'chatjava.server.ServerMain'
+        )
+    }
+
+    from(sourceSets.main.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) })
+    from sourceSets.main.runtimeClasspath
+}
+tasks.register("build-all") {
+    group = 'application'
+    description = 'build the client and server'
+
+    dependsOn('build-chat-client', 'build-chat-server')
+}
