@@ -1,3 +1,13 @@
+###
+.gradle/
+gradle/
+.idea/
+build/
+client.log
+server.log
+gradlew
+gradlew.bat
+
 ### IntelliJ IDEA ###
 out/
 !**/src/main/**/out/
