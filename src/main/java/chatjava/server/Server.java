@@ -56,11 +56,6 @@ public class Server {
     }
 
     public void stop() {
-        try {
-            serverSocket.close();
-        } catch (IOException e) {
-            LOGGER.error("Failed to close server socket");
-        }
         // shutdown code
         synchronized (clients) {
             for (ClientHandlerRunnable handler : clients) {
@@ -71,8 +66,13 @@ public class Server {
                 }
                 handler.shutdown();
             }
+            clients.clear();
         }
-        clients.clear();
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to close server socket");
+        }
     }
 
     public void runServerLogicLoop() {

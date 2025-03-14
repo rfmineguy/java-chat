@@ -2,9 +2,8 @@ package chatjava.client;
 
 import chatjava.common.Message;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.awt.*;
+import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -50,19 +49,30 @@ public class Client {
                try {
                     if ((message = (Message) objectReader.readObject()) != null) {
                         this.responseProcessed = false;
-                        if (message instanceof Message.Shutdown) handleShutdown();
+                        // if (message instanceof Message.Shutdown) handleShutdown();
                         if (message instanceof Message.JoinRoom.Response response) handleJoinResponse(response);
                         if (message instanceof Message.ExitRoom.Response response) handleExitResponse(response);
-                        if (message instanceof Message.Disconnect.Response response) handleDisconnectResponse(response);
+                        if (message instanceof Message.Disconnect.Response response) {
+                            System.out.println("Disconnecting");
+                            socket.setSoTimeout(1);
+                            running = false;
+                            break;
+                        }
                         if (message instanceof Message.SendTextMessage.Response response) handleSendTextMessageResponse(response);
                         this.responseProcessed = true;
                     }
-               } catch (IOException e) {
-                   System.out.println("Failed to read from socket : " + e.getLocalizedMessage());
                } catch (ClassNotFoundException e) {
                    System.out.println("Failed to read object : " + e.getLocalizedMessage());
                } catch (IllegalMonitorStateException e) {
                    System.out.println("Failed to unlock : " + e.getLocalizedMessage());
+               } catch (InterruptedIOException e) {
+                   running = false;
+                   System.out.println("Interrupted in thread");
+                   break;
+               } catch (IOException e) {
+                   running = false;
+                   System.err.println("Server stopped. Client exiting...");
+                   System.exit(0);
                }
            }
         });
@@ -118,15 +128,6 @@ public class Client {
         scanner.close();
     }
 
-    public boolean isShutdown() {
-        return socket.isClosed();
-    }
-
-    public void handleShutdown() {
-        System.out.println("Handle disconnect");
-        System.exit(0);
-    }
-
     private void clientHelpMessage() {
         System.out.println("  help");
         System.out.println("  disconnect");
@@ -144,21 +145,6 @@ public class Client {
         this.activeRoom = response.getTo();
 
         // System.out.println("Exiting: " + response.getFrom());
-    }
-
-    private void handleDisconnectResponse(Message.Disconnect.Response response) {
-        // System.out.println("Handling disconnect response");
-        try {
-            this.running = false;
-            socket.close();
-            // System.out.println("Close socket");
-            serverMessageListenerThread.interrupt();
-            System.out.println(serverMessageListenerThread.isAlive());
-            System.exit(1);
-        } catch (IOException e) {
-            // System.err.println("Failed to close socket on disconnect");
-        }
-        // System.out.println("Got to end");
     }
 
     private void handleSendTextMessageResponse(Message.SendTextMessage.Response response) {
