@@ -151,6 +151,14 @@ public class ClientWithHooks {
         System.out.println("  send-message <message>");
     }
 
+    public void sendMessage(Message message) {
+        try {
+            this.objectWriter.writeObject(message);
+        } catch (IOException e) {
+            System.err.println("Failed to write message");
+        }
+    }
+
     private void handleJoinResponse(Message.JoinRoom.Response response) {
         this.activeRoom = response.getRoom();
         //System.out.println("Joining: " + response.getRoom());
