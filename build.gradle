@@ -53,6 +53,21 @@ tasks.register("build-chat-client", ShadowJar) {
     from(sourceSets.main.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) })
     from sourceSets.main.runtimeClasspath
 }
+tasks.register("build-chat-client-gui", ShadowJar) {
+    group = 'application'
+    description = 'build the chat-client-gui jar'
+    archiveBaseName = 'chat-java.client-gui'
+    archiveVersion = '1.0.0'
+
+    manifest {
+        attributes(
+            'Main-class': 'chatjava.client.gui.ClientMainGui'
+        )
+    }
+
+    from(sourceSets.main.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) })
+    from sourceSets.main.runtimeClasspath
+}
 tasks.register("build-chat-server", ShadowJar) {
     group = 'application'
     description = 'build the chat-server jar'
@@ -72,5 +87,5 @@ tasks.register("build-all") {
     group = 'application'
     description = 'build the client and server'
 
-    dependsOn('build-chat-client', 'build-chat-server')
+    dependsOn('build-chat-client', 'build-chat-client-gui', 'build-chat-server')
 }

@@ -2,19 +2,18 @@ package chatjava.client;
 
 import chatjava.common.Message;
 
-import java.awt.*;
-import java.io.*;
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class Client {
+public class ClientWithHooks {
     // Client Data
     private String ip;
     private int port;
@@ -30,13 +29,16 @@ public class Client {
     private ObjectInputStream objectReader = null;
     private volatile boolean responseProcessed;
 
-    public Client(String ip, int port) {
+    private HashMap<Class<? extends Message>, Consumer<? super Message>> messageHooks;
+
+    public ClientWithHooks(String ip, int port) {
         this.activeRoom = "";
         this.ip = ip;
         this.port = port;
         this.switchingRooms = true;
         this.running = true;
         this.responseProcessed = false;
+        this.messageHooks = new HashMap<>();
         try {
             this.socket = new Socket(this.ip, this.port);
             this.objectReader = new ObjectInputStream(this.socket.getInputStream());
@@ -51,16 +53,13 @@ public class Client {
                try {
                     if ((message = (Message) objectReader.readObject()) != null) {
                         this.responseProcessed = false;
-                        // if (message instanceof Message.Shutdown) handleShutdown();
-                        if (message instanceof Message.JoinRoom.Response response) handleJoinResponse(response);
-                        if (message instanceof Message.ExitRoom.Response response) handleExitResponse(response);
-                        if (message instanceof Message.Disconnect.Response response) {
-                            System.out.println("Disconnecting");
-                            socket.setSoTimeout(1);
-                            running = false;
-                            break;
+                        System.out.println(message);
+                        if (messageHooks.containsKey(message.getClass())) {
+                            messageHooks.get(message.getClass()).accept(message);
                         }
-                        if (message instanceof Message.SendTextMessage.Response response) handleSendTextMessageResponse(response);
+                        else {
+                            System.err.println("No hook for message: " + message.getClass());
+                        }
                         this.responseProcessed = true;
                     }
                } catch (ClassNotFoundException e) {
@@ -79,6 +78,20 @@ public class Client {
            }
         });
         this.serverMessageListenerThread.start();
+    }
+
+    public <T extends Message> void addMessageHook(Class<T> messageClass, Consumer<? super T> consumer) {
+        if (messageHooks.containsKey(messageClass)) {
+            System.err.println("There is already a message hook for: " + messageClass);
+            return;
+        }
+        messageHooks.put(messageClass, (Consumer<? super Message>) consumer);
+    }
+
+    public void showMessageHooks() {
+        messageHooks.forEach((aClass, consumer) -> {
+            System.out.println(aClass);
+        });
     }
 
     public void runClientLogicLoop() {
