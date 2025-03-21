@@ -1,8 +1,45 @@
 package chatjava.common;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class Message implements Serializable {
+    public static class Login {
+        public static class Request extends Message {
+            String username;
+            String password;
+
+            public Request(String username, String password) {
+                this.username = username;
+                this.password = password;
+            }
+
+            public String getUsername() {
+                return username;
+            }
+
+            public String getPassword() {
+                return password;
+            }
+        }
+        public static class Response extends Message {
+            int status;
+            String username;
+
+            public Response(int status, String username) {
+                this.status = status;
+                this.username = username;
+            }
+
+            public String getUsername() {
+                return username;
+            }
+
+            public int getStatus() {
+                return status;
+            }
+        }
+    }
     public static class Disconnect {
         public static class Response extends Message {}
         public static class Request extends Message {}
@@ -35,6 +72,21 @@ public class Message implements Serializable {
             }
         }
     }
+    public static class CreateRoom {
+        public static class Request extends Message {
+            String name;
+            public Request(String name) {
+                this.name = name;
+            }
+
+            public String getName() {
+                return name;
+            }
+        }
+        public static class Response extends Message {
+            public Response() {}
+        }
+    }
     public static class ExitRoom {
         private ExitRoom() {}
 
@@ -59,7 +111,7 @@ public class Message implements Serializable {
             }
         }
     }
-    public static class SendTextMessage extends Message {
+    public static class SendTextMessage {
         public static class Request extends Message {
             String user;
             String text;
@@ -68,6 +120,9 @@ public class Message implements Serializable {
                 this.text = text;
             }
 
+            public String getUser() {
+                return user;
+            }
             public String getText() {
                 return text;
             }
@@ -76,6 +131,41 @@ public class Message implements Serializable {
         public static class Response extends Request {
             public Response(String user, String text) {
                 super(user, text);
+            }
+        }
+    }
+    public static class UpdateTextMessage {
+        public static class Request extends Message {
+            public Request() {}
+        }
+        public static class Response extends Message {
+            String user;
+            String message;
+
+            public Response(String user, String message) {
+                this.user = user;
+                this.message = message;
+            }
+
+            public String getUser() {
+                return user;
+            }
+
+            public String getMessage() {
+                return message;
+            }
+        }
+    }
+    public static class Rooms {
+        public static class Request extends Message {}
+        public static class Response extends Message {
+            final List<String> rooms;
+            public Response(List<String> rooms) {
+                this.rooms = rooms;
+            }
+
+            public List<String> getRooms() {
+                return rooms;
             }
         }
     }
