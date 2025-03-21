@@ -85,6 +85,9 @@ public class ClientHandlerRunnable implements Runnable {
 
                         writer.writeObject(new Message.Disconnect.Response());
                     }
+                    if (message instanceof Message.Rooms.Request roomsRequest) {
+                        // TODO: How do we send back the list of rooms in a network efficient manner
+                    }
                 }
             } catch (IOException | ClassNotFoundException e) {
             }
