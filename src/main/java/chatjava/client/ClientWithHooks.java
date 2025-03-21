@@ -7,6 +7,7 @@ import java.io.InterruptedIOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
@@ -18,9 +19,11 @@ public class ClientWithHooks {
     private String ip;
     private int port;
 
+    private String username;
     private String activeRoom;
     private boolean switchingRooms;
     private boolean running;
+    private boolean loggedIn;
 
     // Network data
     private Thread serverMessageListenerThread;
@@ -28,11 +31,13 @@ public class ClientWithHooks {
     private ObjectOutputStream objectWriter = null;
     private ObjectInputStream objectReader = null;
     private volatile boolean responseProcessed;
+    public boolean shouldTerminate;
 
-    private HashMap<Class<? extends Message>, Consumer<? super Message>> messageHooks;
+    private final HashMap<Class<? extends Message>, Consumer<? super Message>> messageHooks;
 
     public ClientWithHooks(String ip, int port) {
         this.activeRoom = "";
+        this.username = "";
         this.ip = ip;
         this.port = port;
         this.switchingRooms = true;
@@ -45,6 +50,7 @@ public class ClientWithHooks {
             this.objectWriter = new ObjectOutputStream(this.socket.getOutputStream());
         } catch (IOException e) {
             System.err.println("Failed to connect to " + this.ip + ":" + this.port);
+            System.err.println("Is the server running?");
             System.exit(1);
         }
         this.serverMessageListenerThread = new Thread(() -> {
@@ -59,6 +65,11 @@ public class ClientWithHooks {
                         }
                         else {
                             System.err.println("No hook for message: " + message.getClass());
+                        }
+                        if (shouldTerminate) {
+                            socket.setSoTimeout(1);
+                            running = false;
+                            break;
                         }
                         this.responseProcessed = true;
                     }
@@ -94,55 +105,6 @@ public class ClientWithHooks {
         });
     }
 
-    public void runClientLogicLoop() {
-        Scanner scanner = new Scanner(System.in);
-        while (running) {
-            try {
-                while (!responseProcessed) {
-                    Thread.onSpinWait();
-                }
-                System.out.print("[" + activeRoom + "] > ");
-                System.out.flush();
-                String input = scanner.nextLine();
-                String[] tokens = input.split(" ");
-                if (tokens[0].equalsIgnoreCase("help")) {
-                    clientHelpMessage();
-                }
-                else if (tokens[0].equalsIgnoreCase("disconnect")) {
-                    objectWriter.writeObject(new Message.Disconnect.Request());
-                    responseProcessed = false;
-                    running = false;
-                }
-                else if (tokens[0].equalsIgnoreCase("join-room")) {
-                    if (tokens.length < 2) {
-                        System.out.println("join-room requires a parameter");
-                        continue;
-                    }
-                    String room = tokens[1];
-                    objectWriter.writeObject(new Message.JoinRoom.Request(activeRoom, room));
-                    responseProcessed = false;
-                }
-                else if (tokens[0].equalsIgnoreCase("exit-room")) {
-                    objectWriter.writeObject(new Message.ExitRoom.Request());
-                    responseProcessed = false;
-                }
-                else if (tokens[0].equalsIgnoreCase("send-message")) {
-                    String raw = String.join(" ", Arrays.stream(tokens).skip(1).collect(Collectors.joining(" ")));
-                    System.out.println(raw);
-                    objectWriter.writeObject(new Message.SendTextMessage.Request(socket.getInetAddress().toString(), raw));
-                    responseProcessed = false;
-                    System.out.println("Sent send-message request");
-                }
-                else {
-                    clientHelpMessage();
-                }
-            } catch (IOException e) {
-                System.err.println("Failed to write object to network");
-            }
-        }
-        scanner.close();
-    }
-
     private void clientHelpMessage() {
         System.out.println("  help");
         System.out.println("  disconnect");
@@ -151,7 +113,7 @@ public class ClientWithHooks {
         System.out.println("  send-message <message>");
     }
 
-    public void sendMessage(Message message) {
+    public void sendNetworkMessage(Message message) {
         try {
             this.objectWriter.writeObject(message);
         } catch (IOException e) {
@@ -159,18 +121,41 @@ public class ClientWithHooks {
         }
     }
 
-    private void handleJoinResponse(Message.JoinRoom.Response response) {
-        this.activeRoom = response.getRoom();
-        //System.out.println("Joining: " + response.getRoom());
+    public <T extends Message> void waitUntilMessage(Class<? extends Message> messageClass, Consumer<? extends T> consumer) {
+        while (true) {
+
+        }
     }
 
-    private void handleExitResponse(Message.ExitRoom.Response response) {
-        this.activeRoom = response.getTo();
-
-        // System.out.println("Exiting: " + response.getFrom());
+    public void setSocketTimeout(int i) {
+        try {
+            socket.setSoTimeout(i);
+        } catch (SocketException e) {
+            System.err.println("Failed to set socket timeout: " + e.getLocalizedMessage());
+        }
     }
 
-    private void handleSendTextMessageResponse(Message.SendTextMessage.Response response) {
-        System.out.println("Text message response");
+    public String getActiveRoom() {
+        return activeRoom;
+    }
+
+    public String getSocketAddress() {
+        return socket.getLocalAddress().toString();
+    }
+
+    public void setLoggedIn(boolean b) {
+        this.loggedIn = b;
+    }
+
+    public boolean isLoggedIn() {
+        return this.loggedIn;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getUsername() {
+        return username;
     }
 }

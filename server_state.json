@@ -1,0 +1,20 @@
+{
+  "rooms": {
+    "staging": [
+      "test:hello!",
+      "rf:hi there!",
+      "test:hello!",
+      "test:hi"
+    ]
+  },
+  "users": [
+    {
+      "username": "test",
+      "password": "test"
+    },
+    {
+      "username": "rf",
+      "password": "booger"
+    }
+  ]
+}
