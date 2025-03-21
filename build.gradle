@@ -14,6 +14,7 @@ repositories {
 dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.23.1'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.23.1'
+    implementation 'com.google.code.gson:gson:2.12.1'
 }
 
 sourceSets {
